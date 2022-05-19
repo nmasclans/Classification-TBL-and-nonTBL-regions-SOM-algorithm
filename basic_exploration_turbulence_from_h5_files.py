@@ -1,6 +1,5 @@
 import h5py
 import matplotlib.pyplot as plt
-import numpy as np
 from mpl_toolkits import axes_grid1
 
 
@@ -31,55 +30,64 @@ def get_time_averaged_profiles_from_h5_file():
         y = f['y_coor'][:]
         um = f['um'][:]
         vm = f['vm'][:]
-    return x, y, um, vm
+        wm = f['wm'][:]
+    return x, y, um, vm, wm
 
-def plot_contour_w_in_xz_plane(coord,vel,time,y_value):
+def plot_contour_u_in_xz_plane(coord,vel,time,y_value,file_name):
     x = coord[:,:,0]
     z = coord[:,:,2]
-    w = vel[:,:,2]
+    u = vel[:,:,0]
     plt.figure(figsize=(8,3))
-    im = plt.contourf(x,z,w,levels=100,linestyle=None)
-    add_colorbar(im)
-    plt.xlabel('x/L')
-    plt.ylabel('z/L')
-    plt.title('z-velocity (at y = '+str(y_value)+', time = '+str(time)+')')
-    plt.axis('scaled')
-    
-def plot_contour_u_in_xz_plane(coord,vel,time,y_value):
-    x = coord[:,:,0]
-    z = coord[:,:,2]
-    w = vel[:,:,0]
-    plt.figure(figsize=(8,3))
-    im = plt.contourf(x,z,w,levels=100,linestyle=None)
+    im = plt.contourf(x,z,u,levels=100,linestyles=None)
     add_colorbar(im)
     plt.xlabel('x/L')
     plt.ylabel('z/L')
     plt.title('x-velocity (at y/L = '+str(y_value)+', time = '+str(time)+')')
     plt.axis('scaled')
+    file_path = "JHTDB_basic_exploration_figures/" + file_name[:-3] + '_contour_u_plane_xz.png'
+    plt.savefig(file_path)
+
+def plot_contour_w_in_xz_plane(coord,vel,time,y_value,file_name):
+    x = coord[:,:,0]
+    z = coord[:,:,2]
+    w = vel[:,:,2]
+    plt.figure(figsize=(8,3))
+    im = plt.contourf(x,z,w,levels=100,linestyles=None)
+    add_colorbar(im)
+    plt.xlabel('x/L')
+    plt.ylabel('z/L')
+    plt.title('z-velocity (at y = '+str(y_value)+', time = '+str(time)+')')
+    plt.axis('scaled')
+    file_path = "JHTDB_basic_exploration_figures/" + file_name[:-3] + '_contour_w_plane_xz.png'
+    plt.savefig(file_path)
     
-def plot_contour_dudy_in_xz_plane(coord,vel_grad,time,y_value):
+def plot_contour_dudy_in_xz_plane(coord,vel_grad,time,y_value,file_name):
     x = coord[:,:,0]
     z = coord[:,:,2]
     dudy = vel_grad[:,:,1]
     plt.figure(figsize=(8,3))
-    im = plt.contourf(x,z,dudy,levels=100,linestyle=None)
+    im = plt.contourf(x,z,dudy,levels=100,linestyles=None)
     add_colorbar(im)
     plt.xlabel('x/L')
     plt.ylabel('z/L')
     plt.title('du/dy velocity gradient (at y = '+str(y_value)+', time = '+str(time)+')')
     plt.axis('scaled')
+    file_path = "JHTDB_basic_exploration_figures/" + file_name[:-3] + '_contour_dudy_plane_xz.png'
+    plt.savefig(file_path)
     
-def plot_contour_dwdy_in_xz_plane(coord,vel_grad,time,y_value):
+def plot_contour_dwdy_in_xz_plane(coord,vel_grad,time,y_value,file_name):
     x = coord[:,:,0]
     z = coord[:,:,2]
     dwdy = vel_grad[:,:,7]
     plt.figure(figsize=(8,3))
-    im = plt.contourf(x,z,dwdy,levels=100,linestyle=None)
+    im = plt.contourf(x,z,dwdy,levels=100,linestyles=None)
     add_colorbar(im)
     plt.xlabel('x/L')
     plt.ylabel('z/L')
     plt.title('dw/dy velocity gradient (at y = '+str(y_value)+', time = '+str(time)+')')
     plt.axis('scaled')
+    file_path = "JHTDB_basic_exploration_figures/" + file_name[:-3] + '_contour_dwdy_plane_xz.png'
+    plt.savefig(file_path)
 
 def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
     """Add a vertical color bar to an image plot."""
@@ -93,17 +101,19 @@ def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
 
 if __name__ == '__main__':
     
-    #Coord, Vel, Vel_gradient, Time = get_instant_data_from_h5_file("JHTDB_time_0-0_n_25x10x15.h5")
-    #X_Avg_Grid, Y_Avg_Grid, Um_Avg_Grid, Vm_Avg_Grid = get_time_averaged_profiles_from_h5_file()
+    Coord, Vel, Vel_gradient, Time = get_instant_data_from_h5_file("JHTDB_time_0-0_n_25x10x15.h5")
+    #X_Avg, Y_Avg, Um, Vm, Wm= get_time_averaged_profiles_from_h5_file()
     
     # Data at constant y/L = 0.5
-    Coord, Vel, Vel_Grad, Time, Y_Value = get_instant_data_y_ct_from_h5_file("JHTDB_time_10-0_n_80x24_y_0-5.h5")
-    plot_contour_w_in_xz_plane(Coord,Vel,Time,Y_Value)
-    plot_contour_u_in_xz_plane(Coord,Vel,Time,Y_Value)
+    File_Name = "JHTDB_time_10-0_n_831x512_y_0-5.h5"
+    Coord, Vel, Vel_Grad, Time, Y_Value = get_instant_data_y_ct_from_h5_file(File_Name)
+    plot_contour_w_in_xz_plane(Coord,Vel,Time,Y_Value,File_Name)
+    plot_contour_u_in_xz_plane(Coord,Vel,Time,Y_Value,File_Name)
     
     # Data at constant y/L = 0
-    Coord, Vel, Vel_Grad, Time, Y_Value = get_instant_data_y_ct_from_h5_file("JHTDB_time_10-0_n_80x24_y_0-0.h5")
-    plot_contour_dudy_in_xz_plane(Coord,Vel_Grad,Time,Y_Value)
-    plot_contour_dwdy_in_xz_plane(Coord,Vel_Grad,Time,Y_Value)
+    File_Name = "JHTDB_time_10-0_n_831x512_y_0-0.h5"
+    Coord, Vel, Vel_Grad, Time, Y_Value = get_instant_data_y_ct_from_h5_file(File_Name)
+    plot_contour_dudy_in_xz_plane(Coord,Vel_Grad,Time,Y_Value,File_Name)
+    plot_contour_dwdy_in_xz_plane(Coord,Vel_Grad,Time,Y_Value,File_Name)
     
     plt.show()

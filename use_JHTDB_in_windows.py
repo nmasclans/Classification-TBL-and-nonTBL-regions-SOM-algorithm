@@ -1,7 +1,5 @@
 # pyJHTDB are failed to compile on windows. One alternative way might be to use zeep package.
-
 import h5py
-import matplotlib.pyplot as plt
 import numpy as np
 import zeep
 
@@ -11,7 +9,7 @@ ArrayOfFloat = client.get_type('ns0:ArrayOfFloat')
 ArrayOfArrayOfFloat = client.get_type('ns0:ArrayOfArrayOfFloat')
 SpatialInterpolation = client.get_type('ns0:SpatialInterpolation')
 TemporalInterpolation = client.get_type('ns0:TemporalInterpolation')
-Token = 'edu.jhu.pha.turbulence.testing-201311'
+Token = 'edu.upc.nuria.masclans-51109d6e'
 
 def query_data_velocity(time, points):
     # Spatial interpolation = 4, Lag4, 4 point Lagrange
@@ -28,7 +26,6 @@ def query_data_velocity_gradient(time, points):
     return result
 
 def get_velocity_data(x_min=30.2185, x_max=800, y_min=0, y_max=26.488, z_min=0, z_max=240, nx=831, ny=280, nz=512, time=0.25):
-    
     # Time and spatial coordinates
     x = np.linspace(x_min, x_max, nx, dtype = 'float32')
     y = np.linspace(y_min, y_max, ny, dtype = 'float32')
@@ -110,7 +107,8 @@ def get_velocity_data_y_ct(x_min=30.2185, x_max=800, y_value=0, z_min=0, z_max=2
 
 if __name__ == '__main__':
     Time=10.0
-    #Coord, Vel, Vel_Gradient = get_velocity_data(x_min=30.2185, x_max=800, y_min=0, y_max=26.488, z_min=0, z_max=240, nx=25, ny=10, nz=15, time=Time)
-    Coord, Vel, Vel_Gradient = get_velocity_data_y_ct(x_min=30.2185, x_max=800, y_value=0.0, z_min=0, z_max=240, nx=80, nz=24, time=Time)
+    # Coord, Vel, Vel_Gradient = get_velocity_data(x_min=30.2185, x_max=800, y_min=0, y_max=26.488, z_min=0, z_max=240, nx=5, ny=5, nz=5, time=Time)
+    Coord, Vel, Vel_Gradient = get_velocity_data_y_ct(x_min=30.2185, x_max=1000, y_value=0.5, z_min=0, z_max=240, nx=831, nz=512, time=Time)
+    
     # plt.show()
     
