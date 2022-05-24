@@ -14,7 +14,7 @@ class SOM():
     """
     The 2-D, rectangular grid self-organizing map class using Numpy.
     """
-    def __init__(self, m=3, n=3, dim=3, lr=1, sigma=1, max_iter=1000000,random_state=None, max_radius=1):
+    def __init__(self, m=3, n=3, dim=3, lr=1, sigma=1, max_iter=1000000,random_state=None, sigma_evolution = 'constant'):
         """
         Parameters
         ----------
@@ -49,7 +49,7 @@ class SOM():
         self.sigma_initial = sigma
         self.sigma = sigma
         self.max_iter = int(max_iter)
-        self.max_radius = max_radius
+        self.sigma_evolution = sigma_evolution
 
         # Initialize weights
         self.random_state = random_state
@@ -151,13 +151,15 @@ class SOM():
         global_iter_counter = 0
         n_samples = X.shape[0]
         total_iterations = int(np.min([epochs * n_samples, self.max_iter]))
-        print('Total number of iterations to do: {}'.format(total_iterations))
+        print('Training duration: {0} iterations - {1} epochs'.format(total_iterations, total_iterations/n_samples))
         self._n_iter = total_iterations
-        self._lambda = total_iterations # or epochs/self.max_radius ?
+        self._lambda = total_iterations/epochs # or epochs/self.max_radius ?
         if save_cluster_centers_history:
             cluster_centers_history = np.zeros((self.m*self.n,self.dim,self._n_iter)) 
 
         for epoch in range(epochs):
+            
+            print('Training... - Epoch #{}'.format(epoch))
             
             # Break if past max number of iterations
             if global_iter_counter >= self.max_iter:
@@ -190,7 +192,10 @@ class SOM():
                 self.lr = self.lr_initial*np.exp((global_iter_counter/self._lambda)*(-1))
                 
                 # Update neighbourhood radius:
-                self.sigma = self.sigma_initial*np.exp((global_iter_counter/self._lambda)*(-1))
+                if self.sigma == 'constant':
+                    pass
+                else: # self.sigma == 'exponential_decay'
+                    self.sigma = self.sigma_initial*np.exp((global_iter_counter/self._lambda)*(-1))
                 
                 
         # Compute inertia
@@ -207,7 +212,7 @@ class SOM():
         if save_cluster_centers_history:
             self._cluster_centers_history = cluster_centers_history
 
-        print('Training: done')
+        print('Training done!')
         return
 
     def predict(self, X):
@@ -331,4 +336,4 @@ class SOM():
     def cluster_centers_history(self):
         if self._cluster_centers_history is None:
             raise AttributeError('SOM does not have cluster centers history until after calling fit()')
-        return self._cluster_centers_history.reshape(self.m, self.n, self.dim,self._n_iter)
+        return self._cluster_centers_history.reshape((self.m, self.n, self.dim,self._n_iter))

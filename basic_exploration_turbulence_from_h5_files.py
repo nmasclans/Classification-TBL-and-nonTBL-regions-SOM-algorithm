@@ -102,7 +102,7 @@ def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
 if __name__ == '__main__':
     
     Coord, Vel, Vel_gradient, Time = get_instant_data_from_h5_file("JHTDB_time_0-0_n_25x10x15.h5")
-    #X_Avg, Y_Avg, Um, Vm, Wm= get_time_averaged_profiles_from_h5_file()
+    X_Avg, Y_Avg, Um, Vm, Wm = get_time_averaged_profiles_from_h5_file()
     
     # Data at constant y/L = 0.5
     File_Name = "JHTDB_time_10-0_n_831x512_y_0-5.h5"

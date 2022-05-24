@@ -107,8 +107,8 @@ def get_velocity_data_y_ct(x_min=30.2185, x_max=800, y_value=0, z_min=0, z_max=2
 
 if __name__ == '__main__':
     Time=10.0
-    # Coord, Vel, Vel_Gradient = get_velocity_data(x_min=30.2185, x_max=800, y_min=0, y_max=26.488, z_min=0, z_max=240, nx=5, ny=5, nz=5, time=Time)
-    Coord, Vel, Vel_Gradient = get_velocity_data_y_ct(x_min=30.2185, x_max=1000, y_value=0.5, z_min=0, z_max=240, nx=831, nz=512, time=Time)
+    Coord, Vel, Vel_Gradient = get_velocity_data(x_min=30.2185, x_max=800, y_min=0, y_max=26.488, z_min=0, z_max=240, nx=5, ny=5, nz=5, time=Time)
+    #Coord, Vel, Vel_Gradient = get_velocity_data_y_ct(x_min=30.2185, x_max=1000, y_value=0.5, z_min=0, z_max=240, nx=831, nz=512, time=Time)
     
     # plt.show()
     
