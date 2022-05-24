@@ -56,7 +56,7 @@ def plot_contour_w_in_xz_plane(coord,vel,time,y_value,file_name):
     add_colorbar(im)
     plt.xlabel('x/L')
     plt.ylabel('z/L')
-    plt.title('z-velocity (at y = '+str(y_value)+', time = '+str(time)+')')
+    plt.title('z-velocity (at y/ = '+str(y_value)+', time = '+str(time)+')')
     plt.axis('scaled')
     file_path = "JHTDB_basic_exploration_figures/" + file_name[:-3] + '_contour_w_plane_xz.png'
     plt.savefig(file_path)
@@ -70,7 +70,7 @@ def plot_contour_dudy_in_xz_plane(coord,vel_grad,time,y_value,file_name):
     add_colorbar(im)
     plt.xlabel('x/L')
     plt.ylabel('z/L')
-    plt.title('du/dy velocity gradient (at y = '+str(y_value)+', time = '+str(time)+')')
+    plt.title('du/dy velocity gradient (at y/L = '+str(y_value)+', time = '+str(time)+')')
     plt.axis('scaled')
     file_path = "JHTDB_basic_exploration_figures/" + file_name[:-3] + '_contour_dudy_plane_xz.png'
     plt.savefig(file_path)
@@ -84,7 +84,7 @@ def plot_contour_dwdy_in_xz_plane(coord,vel_grad,time,y_value,file_name):
     add_colorbar(im)
     plt.xlabel('x/L')
     plt.ylabel('z/L')
-    plt.title('dw/dy velocity gradient (at y = '+str(y_value)+', time = '+str(time)+')')
+    plt.title('dw/dy velocity gradient (at y/L = '+str(y_value)+', time = '+str(time)+')')
     plt.axis('scaled')
     file_path = "JHTDB_basic_exploration_figures/" + file_name[:-3] + '_contour_dwdy_plane_xz.png'
     plt.savefig(file_path)
@@ -113,6 +113,14 @@ if __name__ == '__main__':
     # Data at constant y/L = 0
     File_Name = "JHTDB_time_10-0_n_831x512_y_0-0.h5"
     Coord, Vel, Vel_Grad, Time, Y_Value = get_instant_data_y_ct_from_h5_file(File_Name)
+    plot_contour_dudy_in_xz_plane(Coord,Vel_Grad,Time,Y_Value,File_Name)
+    plot_contour_dwdy_in_xz_plane(Coord,Vel_Grad,Time,Y_Value,File_Name)
+    
+    # Data at constant y/L = 0.03, which correspons to a plane with mean y+ = 1
+    File_Name = "JHTDB_time_10-0_n_831x512_y_0-03.h5"
+    Coord, Vel, Vel_Grad, Time, Y_Value = get_instant_data_y_ct_from_h5_file(File_Name)
+    plot_contour_w_in_xz_plane(Coord,Vel,Time,Y_Value,File_Name)
+    plot_contour_u_in_xz_plane(Coord,Vel,Time,Y_Value,File_Name)
     plot_contour_dudy_in_xz_plane(Coord,Vel_Grad,Time,Y_Value,File_Name)
     plot_contour_dwdy_in_xz_plane(Coord,Vel_Grad,Time,Y_Value,File_Name)
     

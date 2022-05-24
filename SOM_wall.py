@@ -132,7 +132,7 @@ if __name__ == '__main__':
     n = 1
     
     # Get dataset + dataset transformations:
-    File_Name = "JHTDB_time_10-0_n_831x512_y_0-0.h5"
+    File_Name = "JHTDB_time_10-0_n_831x512_y_0-03.h5"
     Coord, _, Vel_Grad, Time, Y_Value = get_instant_data_y_ct_from_h5_file(File_Name)
     DF = build_dataframe(Coord,Vel_Grad)
     DF_stand, _, _ = standarization(DF)
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     
     # Create, fit and predict the SOM clustering algorithm
     som = SOM(m=m,n=n,dim=3,max_iter=3e6, random_state=1, lr=1, sigma = 1, sigma_evolution = 'constant')
-    som.fit(DF_stand_ndarray,epochs=6,shuffle=True,save_cluster_centers_history=True)
+    som.fit(DF_stand_ndarray,epochs=3,shuffle=True,save_cluster_centers_history=True)
     DF['zs'] = Coord[:,:,2].reshape(-1)
     DF['predictions']=som.predict(DF_stand_ndarray)
     Distance_Samples_ClusterCenters = som.transform(DF_stand_ndarray)
