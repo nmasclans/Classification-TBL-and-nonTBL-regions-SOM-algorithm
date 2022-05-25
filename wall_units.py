@@ -11,11 +11,11 @@ def get_averaged_profiles_JHTDB():
         x-coordinates of the grid where averaged profiles are given
     y : numpy.ndarray, shape (224,)
         y-coordinates of the grid where averaged profiles are given
-    um : numpy.ndarray, shape (3320,224)
+    um : numpy.ndarray, shape (224, 3320)
         x-velocity  averaged on time and on z-coordinate (<U>)
-    vm : numpy.ndarray, shape (3320,224)
+    vm : numpy.ndarray, shape (224, 3320)
         y-velocity averaged on time and on z-coordinate  (<V>)
-    wm : numpy.ndarray, shape (3320,224)
+    wm : numpy.ndarray, shape (224, 3320)
         z-velocity  averaged on time and on z-coordinate (<W>)
     '''
     file_path = "JHTDB_h5_files/Transition_BL_Time_Averaged_Profiles.h5"

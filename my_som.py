@@ -212,7 +212,7 @@ class SOM():
         if save_cluster_centers_history:
             self._cluster_centers_history = cluster_centers_history
 
-        print('Training done!')
+        print('Training done!\n')
         return
 
     def predict(self, X):
@@ -240,6 +240,7 @@ class SOM():
         assert X.shape[1] == self.dim, f'This SOM has dimension {self.dim}. Received input with dimension {X.shape[1]}'
 
         labels = np.array([self._find_bmu(x) for x in X])
+        print('Prediction done!\n')
         return labels
 
     def transform(self, X):
@@ -266,6 +267,7 @@ class SOM():
         diff = X_stack - cluster_stack
 
         # Take and return norm
+        print('Transformation done!\n')
         return np.linalg.norm(diff, axis=2)
 
     def fit_predict(self, X, **kwargs):
