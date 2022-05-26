@@ -35,10 +35,10 @@ def add_colorbar(fig,ax,im):
     cax = divider.append_axes('right',size='5%',pad=0.05)
     fig.colorbar(im,cax=cax,orientation='vertical')
 
-def plot_predictions(df, m,n,sampling=5):
+def plot_predictions(df, m,n,sampling=5,marker_size=10):
     df = df.iloc[np.arange(0,len(df),sampling)]      
     plt.figure(figsize=(15,6))
-    plt.scatter(df['x_s'],df['z_s'],c=df['predictions'],s=10,marker=',')
+    plt.scatter(df['x_s'],df['z_s'],c=df['predictions'],s=marker_size,marker=',')
     plt.xlim(df.iloc[0]['x_s'],df.iloc[-1]['x_s'])
     plt.ylim(df.iloc[0]['z_s'],df.iloc[-1]['z_s'])
     plt.xlabel('x/L')
@@ -47,7 +47,7 @@ def plot_predictions(df, m,n,sampling=5):
     if (m == 1 or n == 1): # 1D SOM grid
         fig, ax = plt.subplots(m*n,1,figsize=(14,7))
         for i in range(m*n):
-            im = ax[i].scatter(df[df['predictions']==i]['x_s'],df[df['predictions']==i]['z_s'],c=df[df['predictions']==i]['predictions'],s=10,marker=',')
+            im = ax[i].scatter(df[df['predictions']==i]['x_s'],df[df['predictions']==i]['z_s'],c=df[df['predictions']==i]['predictions'],s=marker_size,marker=',')
             ax[i].set_title('Cluster {}'.format(i))
             ax[i].set_xlim(df.iloc[0]['x_s'],df.iloc[-1]['x_s'])
             ax[i].set_ylim(df.iloc[0]['z_s'],df.iloc[-1]['z_s'])
@@ -55,14 +55,33 @@ def plot_predictions(df, m,n,sampling=5):
             ax[i].set_ylabel('y/L')
         plt.suptitle('Clusters predicitons')
         plt.tight_layout()
-    
+    else:
+        cl = 0
+        n_rows = int((n+1)/2)
+        n_cols = 2
+        for _ in range(10):
+            if cl == (m*n):
+                break
+            fig, ax = plt.subplots(n_rows,n_cols,figsize=(14,8))
+            for i in range(n_rows):
+                for j in range(n_cols):
+                    if cl == (m*n):
+                        break
+                    im = ax[i,j].scatter(df[df['predictions']==cl]['x_s'],df[df['predictions']==cl]['z_s'],c=df[df['predictions']==cl]['predictions'],s=marker_size,marker=',')
+                    ax[i,j].set_title('Cluster {}'.format(cl))
+                    ax[i,j].set_xlim(df.iloc[0]['x_s'],df.iloc[-1]['x_s'])
+                    ax[i,j].set_ylim(df.iloc[0]['z_s'],df.iloc[-1]['z_s'])
+                    ax[i,j].set_xlabel('x/L')
+                    ax[i,j].set_ylabel('y/L')
+                    cl += 1
+            fig.tight_layout()
+                
+            
 def plot_distance_samples_to_cluster_centers(df, distance_samples_clusterCenters, m, n, sampling_space=5):
     df = df.iloc[np.arange(0,len(df),sampling_space)] 
     distance_samples_clusterCenters = distance_samples_clusterCenters[::sampling_space,:]
     total_samples = len(df)
     sampled_samples = np.arange(0,total_samples,sampling_space)
-    print(sampled_samples)
-    print(distance_samples_clusterCenters)
     if (m == 1 or n == 1): # 1D SOM grid
         fig, ax = plt.subplots(m*n,1,figsize=(14,7))
         for i in range(m*n):
@@ -85,10 +104,11 @@ def plot_distance_samples_to_cluster_centers(df, distance_samples_clusterCenters
         plt.suptitle('Euclidean distance between samples and cluster centers')
         plt.tight_layout()  
     else: # 2D SOM grid
+        '''
         fig, ax = plt.subplots(m,n)
         i = 0
         for i_m in range(m):
-            for i_n in range(n):
+            for i_n in range(min(n,4)):
                 im = ax[i_m,i_n].scatter(df['x_s'],df['z_s'],c=distance_samples_clusterCenters[:,i],s=2)
                 ax[i_m,i_n].set_title('Cluster {}'.format(i))
                 ax[i_m,i_n].set_xlim(df.iloc[0]['x_s'],df.iloc[-1]['x_s'])
@@ -99,18 +119,24 @@ def plot_distance_samples_to_cluster_centers(df, distance_samples_clusterCenters
                 i += 1
         plt.suptitle('Euclidean distance between samples and cluster centers')
         plt.tight_layout()
-        fig, ax = plt.subplots(m,n)
-        i = 0
-        for i_m in range(m):
-            for i_n in range(n):
-                ax[i_m,i_n].plot(distance_samples_clusterCenters[:,i]) 
-                ax[i_m,i_n].set_title('Cluster {}'.format(i))
-                ax[i_m,i_n].set_xlabel('Training samples')
-                ax[i_m,i_n].set_ylabel('Distance')
-                ax[i_m,i_n].grid()
-                i += 1  
-        plt.suptitle('Euclidean distance between samples and cluster centers')
-        plt.tight_layout()
+        '''
+        cl = 0
+        for _ in range(10):
+            if cl == m*n:
+                break
+            fig, ax = plt.subplots(5,2,figsize=(10,8))
+            for i in range(5):
+                for j in range(2):
+                    if cl == m*n:
+                        break
+                    ax[i,j].plot(distance_samples_clusterCenters[:,cl]) 
+                    ax[i,j].set_title('Cluster {}'.format(cl))
+                    ax[i,j].set_xlabel('Training samples')
+                    ax[i,j].set_ylabel('Distance')
+                    ax[i,j].grid()
+                    cl += 1  
+            plt.suptitle('Euclidean distance between samples and cluster centers')
+            plt.tight_layout()
         
 def plot_cluster_centers_history(cch,m,n,sampling_iter):
     total_iter = cch.shape[-1]
@@ -143,7 +169,7 @@ if __name__ == '__main__':
     
     # Create, fit and predict the SOM clustering algorithm
     som = SOM(m=m,n=n,dim=3,max_iter=3e6, random_state=1, lr=1, sigma = 1, sigma_evolution = 'constant')
-    som.fit(DF_stand_ndarray,epochs=3,shuffle=True,save_cluster_centers_history=True)
+    som.fit(DF_stand_ndarray,epochs=3,shuffle=True,save_param_history=True)
     DF['z_s'] = Coord[:,:,2].reshape(-1)
     DF['predictions']=som.predict(DF_stand_ndarray)
     Distance_Samples_ClusterCenters = som.transform(DF_stand_ndarray)

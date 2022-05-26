@@ -1,14 +1,14 @@
+import itertools
+
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from basic_exploration_turbulence_from_h5_files import \
     get_instant_data_y_ct_from_h5_file
-from my_som import SOM
-from SOM_wall import (add_colorbar, plot_distance_samples_to_cluster_centers,
-                      plot_predictions)
+from SOM_wall import plot_predictions
+from susi_som import SOMClustering
 
 '''
 SOM for horizontal plane, 15 standarized features:
@@ -81,60 +81,16 @@ def construct_ndarray_from_standarized_features_h5file(file_name, sampling):
     df['z_s'] = z_s
     return dataset, df
 
-def plot_cluster_centers_history(cch,m,n,sampling_iter,feature_names):
-    total_iter = cch.shape[-1]
-    n_features = cch.shape[2]
-    cch_reshaped = cch.reshape(m*n,n_features,total_iter)
-    cch = cch[:,:,:,::sampling_iter]
-    cch_reshaped = cch_reshaped[:,:,::sampling_iter]
-    sampled_iter = np.arange(0,total_iter,sampling_iter)
-    if (m == 1 or n == 1): # 1D SOM grid
-        n_rows = 6
-        n_cols = 3
-        for cl in range(m*n):
-            fig, ax = plt.subplots(n_rows,n_cols,figsize=(10,8))
-            f = 0
-            for i in range(n_rows):
-                for j in range(n_cols):
-                    if f == n_features:
-                        break
-                    ax[i,j].plot(sampled_iter,cch[cl,0,f,:])
-                    ax[i,j].set_title(feature_names[f])
-                    ax[i,j].grid(visible=True)
-                    f += 1
-            fig.suptitle('Center of Cluster {} vs SOM iterations'.format(cl))
-            fig.tight_layout()
-    else: # m,n != 1, comform a 2D grid
-        # Only print the features evolution of 5 clusters
-        # Print all n_features in the same plot
-        feature = 0
-        n_rows = int((n_features+1)/2)
-        n_cols = 2
-        for cl in range(min(m*n,5)):
-            fig, ax = plt.subplots(n_rows,n_cols,figsize=(10,8))
-            for i in range(n_rows):
-                for j in range(n_cols):
-                    if feature == n_features:
-                        break
-                    ax[i,j].plot(sampled_iter,cch_reshaped[cl,feature,:])
-                    ax[i,j].set_title(feature_names[feature])
-                    ax[i,j].grid(visible=True)
-                    feature += 1
-            fig.suptitle('Center of Cluster {} vs SOM iterations'.format(cl))
-            fig.tight_layout()
-            feature = 0
-                    
     
 
 if __name__ == '__main__':
     
-    # SOM grid shape:
     m = 5
     n = 5
     
     # Get dataset of 16 standarized features, as ndarray 'data'
     File_Name = "JHTDB_standarized_features/JHTDB_time_10-0_n_831x512_y_0-03_standarized_features.h5"
-    Data, DF = construct_ndarray_from_standarized_features_h5file(File_Name, sampling = 2)
+    Data, DF = construct_ndarray_from_standarized_features_h5file(File_Name, sampling = 10)
     Feature_Names = DF.keys()    
     
     # Remove x_s and z_s from clustering dataset, we will not use it for training the algorithm:
@@ -142,7 +98,68 @@ if __name__ == '__main__':
     Data_red = Data[:,:-n_features_reduced]
     Feature_Names_red = Feature_Names[:-n_features_reduced]
     
-    # Create, fit and predict the SOM clustering algorithm
+    # Create and fit the SOM clustering algorithm
+    som = SOMClustering(n_rows = m, 
+                        n_columns = n, 
+                        init_mode_unsupervised = 'random_data', 
+                        n_iter_unsupervised = 10000, 
+                        random_state = 1, 
+                        verbose = True)
+    som.fit(Data_red)
+    
+    # Predict dataset (assign a cluster to each datapoint)
+    Data_Red_transformed = som.transform(Data_red)
+    DF['predictions'] = Data_Red_transformed[:,0]*10+Data_Red_transformed[:,1]
+    plot_predictions(DF,m,n,sampling=1,marker_size=2)
+    
+    # Best Matching clusters
+    bmu_list = som.get_bmus(Data_red)
+    plt.figure()
+    plt.hist2d([x[0] for x in bmu_list], [x[1] for x in bmu_list],bins=[m,n],range = [[-0.5,m-0.5],[-0.5,n-0.5]])
+
+    # u-matrix
+    umat = som.get_u_matrix()
+    plt.imshow(np.squeeze(umat))
+    
+    plt.show()   
+    
+    # Parametric study of SOM
+    param_grid = {"n_rows": [5, 10, 20],
+                  "learning_rate_start": [0.5, 0.7, 0.9],
+                  "learning_rate_end": [0.1, 0.05, 0.005]}    
+    dict_param = {} 
+    dict_umat = {}
+    for i,j,k in itertools.product(range(3),repeat=3):
+        n_rows = param_grid['n_rows'][i]
+        n_columns = n_rows
+        learning_rate_start = param_grid['learning_rate_start'][j]
+        learning_rate_end = param_grid['learning_rate_end'][k]
+        print('\nSOM Clustering for: n_rows = {}, n_columns = {}, learning_rate_start = {} and learning_rate_end = {}\n'
+              .format(n_rows, n_columns, learning_rate_start, learning_rate_end))
+        som = SOMClustering(n_rows = n_rows, 
+                            n_columns = n_columns, 
+                            learning_rate_start=learning_rate_start,
+                            learning_rate_end=learning_rate_end,
+                            init_mode_unsupervised = 'random_data', 
+                            n_iter_unsupervised = 1000, 
+                            random_state = 1, 
+                            verbose = True)
+        som.fit(Data_red)
+        dict_param[tuple((i,j,k))] = [n_rows, learning_rate_start, learning_rate_end]
+        dict_umat[tuple((i,j,k))] = som.get_u_matrix()
+    
+    plt.figure()
+    plt.imshow(np.squeeze(umat))
+    
+    for i,j,k in itertools.product(range(3),repeat=3):
+        param = dict_param[tuple((i,j,k))]
+        umat = dict_umat[tuple((i,j,k))]
+        plt.figure()
+        plt.imshow(np.squeeze(umat))
+        str = 'n_rows = n_columns = {}, learning_rate_start = {}, learning_rate_end = {}'.format(param[0],param[1],param[2])
+        plt.title(str)
+    
+    '''
     som = SOM(m=m,n=n,dim=16-n_features_reduced,max_iter=25000, random_state=1, lr=1, sigma = 1, sigma_evolution = 'exponential_decay')
     som.fit(Data_red,epochs=1,shuffle=True,save_param_history=True)
     DF['predictions'] = som.predict(Data_red)
@@ -157,4 +174,4 @@ if __name__ == '__main__':
     plot_cluster_centers_history(Cluster_Centers_History, m, n, Sampling_Iter, Feature_Names_red)
     
     plt.show()
-
+    '''

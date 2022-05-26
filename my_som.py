@@ -63,6 +63,8 @@ class SOM():
         self._trained = False
         self._cluster_centers_history = None
         self._lambda = None
+        self._lr_history = None
+        self._sigma_history = None
 
     def get_weights(self):
         return self.weights
@@ -125,7 +127,7 @@ class SOM():
         # Compute sum of squared distance (just euclidean distance) from x to bmu
         return np.sum(np.square(x - bmu))
 
-    def fit(self, X, epochs=1, shuffle=True, save_cluster_centers_history=False):
+    def fit(self, X, epochs=1, shuffle=True, save_param_history=False):
         """
         Take data (a tensor of type float64) as input and fit the SOM to that
         data for the specified number of epochs.
@@ -140,6 +142,10 @@ class SOM():
         shuffle : bool, default True
             Whether or not to randomize the order of train data when fitting.
             Can be seeded with np.random.seed() prior to calling fit.
+        save_param_history : bool, default False
+            If True, the evolution of the cluster centers, learning rate (lr) and neighborhood radius (sigma)
+            along the training iterations are stored in the attributes _cluster_centers_history, _lr_history and
+            _sigma_history correspondingly
 
         Returns
         -------
@@ -153,9 +159,11 @@ class SOM():
         total_iterations = int(np.min([epochs * n_samples, self.max_iter]))
         print('Training duration: {0} iterations - {1} epochs'.format(total_iterations, total_iterations/n_samples))
         self._n_iter = total_iterations
-        self._lambda = total_iterations/epochs # or epochs/self.max_radius ?
-        if save_cluster_centers_history:
+        self._lambda = (total_iterations/epochs)/10 # or epochs/self.max_radius ?
+        if save_param_history:
             cluster_centers_history = np.zeros((self.m*self.n,self.dim,self._n_iter)) 
+            lr_history = np.zeros(self._n_iter)
+            sigma_history = np.zeros(self._n_iter)
 
         for epoch in range(epochs):
             
@@ -183,8 +191,10 @@ class SOM():
                 self.step(input)
                 
                 # Store cluser centers history
-                if save_cluster_centers_history:
+                if save_param_history:
                     cluster_centers_history[:,:,global_iter_counter] = self.weights
+                    lr_history[global_iter_counter] = self.lr
+                    sigma_history[global_iter_counter] = self.sigma
                 
                 global_iter_counter += 1
                 
@@ -209,8 +219,10 @@ class SOM():
         self._trained = True
         
         # Set weights history
-        if save_cluster_centers_history:
+        if save_param_history:
             self._cluster_centers_history = cluster_centers_history
+            self._lr_history = lr_history
+            self._sigma_history = sigma_history
 
         print('Training done!\n')
         return
@@ -243,7 +255,7 @@ class SOM():
         print('Prediction done!\n')
         return labels
 
-    def transform(self, X):
+    def transform(self, X, data_type = 'float64'):
         """
         Transform the data X into cluster distance space.
 
@@ -252,6 +264,9 @@ class SOM():
         X : ndarray
             Data of shape (n, self.dim) where n is the number of samples. The
             data to transform.
+        data_type : numpy data type to which the weights and data will be transformed
+                    reduce the default value to reduce storage needs
+                    possible values: 'float64', 'float32', 'float16'
 
         Returns
         -------
@@ -259,9 +274,13 @@ class SOM():
             Transformed data of shape (n, self.n*self.m). The Euclidean distance
             from each item in X to each cluster center.
         """
+        # Reduce data accuracy due to storage problems:
+        X = X.astype(data_type)
+        weights = self.weights.astype(data_type)
+        
         # Stack data and cluster centers
         X_stack = np.stack([X]*(self.m*self.n), axis=1)
-        cluster_stack = np.stack([self.weights]*X.shape[0], axis=0)
+        cluster_stack = np.stack([weights]*X.shape[0], axis=0)
 
         # Compute difference
         diff = X_stack - cluster_stack
@@ -331,7 +350,7 @@ class SOM():
     @property
     def n_iter(self):
         if self._n_iter is None:
-            raise AttributeError('SOM does not have n_iter_ attribute until after calling fit()')
+            raise AttributeError('SOM does not have n_iter attribute until after calling fit()')
         return self._n_iter
     
     @property
@@ -339,3 +358,15 @@ class SOM():
         if self._cluster_centers_history is None:
             raise AttributeError('SOM does not have cluster centers history until after calling fit()')
         return self._cluster_centers_history.reshape((self.m, self.n, self.dim,self._n_iter))
+    
+    @property
+    def lr_history(self):
+        if self._lr_history is None:
+            raise AttributeError('SOM does not have lr_history attribute until after calling fit()')
+        return self._lr_history
+    
+    @property
+    def sigma_history(self):
+        if self._sigma_history is None:
+            raise AttributeError('SOM does not have sigma_history attribute until after calling fit()')
+        return self._sigma_history
