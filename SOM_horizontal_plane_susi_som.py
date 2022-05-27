@@ -4,10 +4,11 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from basic_exploration_turbulence_from_h5_files import \
     get_instant_data_y_ct_from_h5_file
-from SOM_wall import plot_predictions
+from SOM_wall import add_colorbar, plot_predictions
 from susi_som import SOMClustering
 
 '''
@@ -81,16 +82,142 @@ def construct_ndarray_from_standarized_features_h5file(file_name, sampling):
     df['z_s'] = z_s
     return dataset, df
 
+def single_SOMClustering(data,df,m,n,lr_start,lr_end,n_iter,
+                         bmu_umatrix_storing=False, bmu_umatrix_storing_frequency=None, 
+                         make_final_plots=True):
     
+    # Create and fit the SOM clustering algorithm
+    som = SOMClustering(n_rows = m, 
+                        n_columns = n, 
+                        init_mode_unsupervised = 'random_data', 
+                        n_iter_unsupervised = n_iter, 
+                        learning_rate_start = lr_start,
+                        learning_rate_end = lr_end,
+                        random_state = 1, 
+                        verbose = True,
+                        bmu_umatrix_storing=bmu_umatrix_storing,
+                        bmu_umatrix_storing_frequency= bmu_umatrix_storing_frequency)
+    som.fit(data)
+    
+    if make_final_plots:
+        # Predict dataset (assign a cluster to each datapoint)
+        data_transformed = som.transform(data)
+        df['predictions'] = data_transformed[:,0]*10+data_transformed[:,1]
+        plot_predictions(df,m,n,sampling=1,marker_size=2)
+        # Best Matching Units - times a neuron is the winning neuron
+        bmus = som.get_bmus(data)
+        # U-Matrix
+        umatrix = som.get_u_matrix()
+        plot_bmu_and_umatrix(bmus,umatrix,m,n)
+        
+    if bmu_umatrix_storing:
+        for key in som.bmu_history:
+            num_iter_str = '# iteration: {}'.format(key*bmu_umatrix_storing_frequency)
+            plot_bmu_and_umatrix(bmus=som.bmu_history[key],
+                                 umatrix=som.umatrix_history[key], m=m, n=n,
+                                 subtitles=['BMU at ' + num_iter_str + '\n',
+                                            'U-matrix at ' + num_iter_str + '\n'])        
+    
+    return som, df
+
+def perform_hac(som,data,m,n,num_merges = 10):
+    w_cl_som = som.unsuper_som_
+    w_cl = w_cl_som.reshape(m*n,-1)
+    bmus = som.get_bmus(data)
+    n_cl_som = np.zeros((m,n),dtype='int')
+    for data_point in range(len(bmus)):
+        n_cl_som[bmus[data_point][0],bmus[data_point][1]] += 1 
+    n_cl = n_cl_som.reshape(m*n,-1)
+    
+    # index associated to each cluster. new index when 2 clusters are merged.
+    cl_id = np.zeros((m*n,num_merges+1),dtype='int')
+    cl_id[:,0] = np.arange(m*n)
+    merge_id = m*n
+    
+    for merge_iter in range(num_merges):
+        d_wc = np.zeros((m*n-merge_iter,m*n-merge_iter))
+        for r_mn in range(m*n-merge_iter):
+            for s_mn in range(m*n-merge_iter):
+                d_wc[r_mn,s_mn] = ((n_cl[r_mn]*n_cl[s_mn])/(n_cl[r_mn]+n_cl[s_mn]))*(np.linalg.norm(w_cl[r_mn,:]-w_cl[s_mn,:])**2)
+            d_wc[r_mn,r_mn] = 1000
+        ind_min = np.where(d_wc == np.amin(d_wc))[0]
+        ind_r = ind_min[0]
+        ind_s = ind_min[1]
+        n_r = n_cl[ind_min[0]]
+        n_s = n_cl[ind_min[1]]
+        n_new_rs = n_r+n_s
+        w_new_rs = (1/(n_r+n_s))*(n_r*w_cl[ind_r,:]+n_s*w_cl[ind_s,:])
+        n_cl[ind_r] = n_new_rs
+        n_cl = np.delete(n_cl,ind_s)
+        w_cl[ind_r,:] = w_new_rs
+        w_cl = np.delete(w_cl,ind_s,axis=0)
+
+        cl_id[[ind_r,ind_s],merge_iter+1]=merge_id
+        print('Merge iter #{}: merge_id = {} of clusters = ({},{}) at closest distance = {:.3f}'.format(merge_iter,merge_id,ind_r,ind_s,np.amin(d_wc)))
+        merge_id += 1
+
+    
+    
+    
+def plot_bmu_and_umatrix(bmus,umatrix,m,n,subtitles=['BMU','U-matrix']):
+    fig, ax = plt.subplots(1,2,figsize=(12,6))
+    im = ax[0].hist2d(y = [x[0] for x in bmus], x = [x[1] for x in bmus],bins=[n,m],range = [[-0.5,n-0.5],[-0.5,m-0.5]])
+    add_colorbar(fig,ax[0],im[3])
+    ax[0].invert_yaxis()
+    ax[0].set_xticks(np.arange(0,n,5))
+    ax[0].set_yticks(np.arange(0,m,5))
+    im = ax[1].imshow(np.squeeze(umatrix))
+    add_colorbar(fig,ax[1],im)
+    ax[1].set_xticks(np.arange(0,2*n,2))
+    ax[1].set_xticklabels(np.arange(0,n))
+    ax[1].set_yticks(np.arange(0,2*m,2))
+    ax[1].set_yticklabels(np.arange(0,m))
+    for i in range(2):
+        ax[i].set_title(subtitles[i])
+        ax[i].xaxis.tick_top()
+        ax[i].axis('equal')
+        ax[i].set_xlabel('n-columns')
+        ax[i].set_ylabel('m-rows')
+    fig.tight_layout()
+
+def parametric_study_SOMClustering(N_rows, Learning_rate_start, Learning_rate_end, N_iter_unsupervised):
+    num_of_trainings = len(N_rows)*len(Learning_rate_start)*len(Learning_rate_end)*len(N_iter_unsupervised)
+    print('\n---------------------------------------------------------------------------')
+    print('Parametric study: {} trainings'.format(num_of_trainings))
+    print('---------------------------------------------------------------------------')
+    param_dict = {}
+    umat_dict = {}
+    i = 0
+    for n_rows in N_rows:
+        for learning_rate_start in Learning_rate_start:
+            for learning_rate_end in Learning_rate_end:
+                for n_iter_unsupervised in N_iter_unsupervised:
+                    param_dict[i] = 'n_rows = n_columns = {}, lr_start = {}, lr_end = {}, # iterations = {}'.format(
+                        n_rows, learning_rate_start, learning_rate_end,n_iter_unsupervised)
+                    print('\nTraining #{}: '.format(i) + param_dict[i] + '\n')
+                    som = SOMClustering(n_rows = n_rows, 
+                                        n_columns = n_rows, 
+                                        learning_rate_start=learning_rate_start,
+                                        learning_rate_end=learning_rate_end,
+                                        init_mode_unsupervised = 'random_data', 
+                                        n_iter_unsupervised = n_iter_unsupervised, 
+                                        random_state = 1, 
+                                        verbose = True)
+                    som.fit(Data_red)
+                    umat_dict[i] = som.get_u_matrix()
+                    i+=1
+                    
+    # Make plots parametric study
+    for i in range(num_of_trainings):
+        plt.figure()
+        plt.imshow(np.squeeze(umat_dict[i]))
+        plt.title(param_dict[i])
 
 if __name__ == '__main__':
     
-    m = 5
-    n = 5
-    
     # Get dataset of 16 standarized features, as ndarray 'data'
     File_Name = "JHTDB_standarized_features/JHTDB_time_10-0_n_831x512_y_0-03_standarized_features.h5"
-    Data, DF = construct_ndarray_from_standarized_features_h5file(File_Name, sampling = 10)
+    Data, DF = construct_ndarray_from_standarized_features_h5file(File_Name, sampling = 5)
     Feature_Names = DF.keys()    
     
     # Remove x_s and z_s from clustering dataset, we will not use it for training the algorithm:
@@ -98,80 +225,20 @@ if __name__ == '__main__':
     Data_red = Data[:,:-n_features_reduced]
     Feature_Names_red = Feature_Names[:-n_features_reduced]
     
-    # Create and fit the SOM clustering algorithm
-    som = SOMClustering(n_rows = m, 
-                        n_columns = n, 
-                        init_mode_unsupervised = 'random_data', 
-                        n_iter_unsupervised = 10000, 
-                        random_state = 1, 
-                        verbose = True)
-    som.fit(Data_red)
-    
-    # Predict dataset (assign a cluster to each datapoint)
-    Data_Red_transformed = som.transform(Data_red)
-    DF['predictions'] = Data_Red_transformed[:,0]*10+Data_Red_transformed[:,1]
-    plot_predictions(DF,m,n,sampling=1,marker_size=2)
-    
-    # Best Matching clusters
-    bmu_list = som.get_bmus(Data_red)
-    plt.figure()
-    plt.hist2d([x[0] for x in bmu_list], [x[1] for x in bmu_list],bins=[m,n],range = [[-0.5,m-0.5],[-0.5,n-0.5]])
-
-    # u-matrix
-    umat = som.get_u_matrix()
-    plt.imshow(np.squeeze(umat))
-    
-    plt.show()   
+    # Single training and analysis of SOM 
+    SOM, DF = single_SOMClustering(data = Data_red, df=DF, m=20, n=20, 
+                                   lr_start=0.5, lr_end= 0.01, n_iter=1001,
+                                   bmu_umatrix_storing=False, bmu_umatrix_storing_frequency=25000, 
+                                   make_final_plots=False)
+    # plt.show()
     
     # Parametric study of SOM
-    param_grid = {"n_rows": [5, 10, 20],
-                  "learning_rate_start": [0.5, 0.7, 0.9],
-                  "learning_rate_end": [0.1, 0.05, 0.005]}    
-    dict_param = {} 
-    dict_umat = {}
-    for i,j,k in itertools.product(range(3),repeat=3):
-        n_rows = param_grid['n_rows'][i]
-        n_columns = n_rows
-        learning_rate_start = param_grid['learning_rate_start'][j]
-        learning_rate_end = param_grid['learning_rate_end'][k]
-        print('\nSOM Clustering for: n_rows = {}, n_columns = {}, learning_rate_start = {} and learning_rate_end = {}\n'
-              .format(n_rows, n_columns, learning_rate_start, learning_rate_end))
-        som = SOMClustering(n_rows = n_rows, 
-                            n_columns = n_columns, 
-                            learning_rate_start=learning_rate_start,
-                            learning_rate_end=learning_rate_end,
-                            init_mode_unsupervised = 'random_data', 
-                            n_iter_unsupervised = 1000, 
-                            random_state = 1, 
-                            verbose = True)
-        som.fit(Data_red)
-        dict_param[tuple((i,j,k))] = [n_rows, learning_rate_start, learning_rate_end]
-        dict_umat[tuple((i,j,k))] = som.get_u_matrix()
+    parametric_study_SOMClustering(N_rows = [25],
+                                   Learning_rate_start = [0.9],
+                                   Learning_rate_end = [0.05],
+                                   N_iter_unsupervised = [50000,100000,150000]) 
+    plt.show() 
     
-    plt.figure()
-    plt.imshow(np.squeeze(umat))
-    
-    for i,j,k in itertools.product(range(3),repeat=3):
-        param = dict_param[tuple((i,j,k))]
-        umat = dict_umat[tuple((i,j,k))]
-        plt.figure()
-        plt.imshow(np.squeeze(umat))
-        str = 'n_rows = n_columns = {}, learning_rate_start = {}, learning_rate_end = {}'.format(param[0],param[1],param[2])
-        plt.title(str)
-    
-    '''
-    som = SOM(m=m,n=n,dim=16-n_features_reduced,max_iter=25000, random_state=1, lr=1, sigma = 1, sigma_evolution = 'exponential_decay')
-    som.fit(Data_red,epochs=1,shuffle=True,save_param_history=True)
-    DF['predictions'] = som.predict(Data_red)
-    Distance_Samples_ClusterCenters = som.transform(Data_red,data_type='float16')
-    Cluster_Centers_History = som.cluster_centers_history
-    
-    # Plot SOM clustering resuts:
-    Sampling_Space = 2
-    Sampling_Iter = 100
-    plot_predictions(DF,m,n,Sampling_Space,marker_size=2)
-    plot_distance_samples_to_cluster_centers(DF, Distance_Samples_ClusterCenters, m, n, Sampling_Space) 
-    plot_cluster_centers_history(Cluster_Centers_History, m, n, Sampling_Iter, Feature_Names_red)
-    
-    plt.show()
-    '''
+    # Quantification error:
+    QE = SOM.get_quantization_error()
+

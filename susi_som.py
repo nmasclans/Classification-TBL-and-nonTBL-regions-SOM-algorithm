@@ -96,6 +96,8 @@ class SOMClustering:
         n_jobs: Optional[int] = None,
         random_state=None,
         verbose: Optional[int] = 0,
+        bmu_umatrix_storing: float = False,
+        bmu_umatrix_storing_frequency: Optional[int] = 100,
     ) -> None:
         """Initialize SOMClustering object."""
         self.n_rows = n_rows
@@ -112,6 +114,10 @@ class SOMClustering:
         self.n_jobs = n_jobs
         self.random_state = random_state
         self.verbose = verbose
+        self.bmu_umatrix_storing = bmu_umatrix_storing
+        self.bmu_umatrix_storing_frequency = bmu_umatrix_storing_frequency
+        self.bmu_history = None
+        self.umatrix_history = None
 
     def _init_unsuper_som(self) -> None:
         """Initialize map."""
@@ -201,6 +207,11 @@ class SOMClustering:
     def _train_unsupervised_som(self) -> None:
         """Train unsupervised SOM."""
         self._init_unsuper_som()
+        
+        if self.bmu_umatrix_storing:
+            bmu = {}
+            umatrix = {}
+            i_bmu_umatrix = 0
 
         if self.train_mode_unsupervised == "online":
             for it in tqdm(
@@ -231,6 +242,12 @@ class SOMClustering:
                     true_vector=self.X_[dp],
                     learning_rate=learning_rate * self.sample_weights_[dp],
                 )
+                
+                if self.bmu_umatrix_storing:
+                    if (it % self.bmu_umatrix_storing_frequency==0):
+                        bmu[i_bmu_umatrix] = self.get_bmus(self.X_)
+                        umatrix[i_bmu_umatrix] = self.get_u_matrix()
+                        i_bmu_umatrix += 1
 
         elif self.train_mode_unsupervised == "batch":
             for it in tqdm(
@@ -264,6 +281,9 @@ class SOMClustering:
             )
 
         self._set_bmus(self.X_)
+        if self.bmu_umatrix_storing:
+            self.bmu_history = bmu
+            self.umatrix_history = umatrix
 
     def _calc_learning_rate(self, curr_it: int, mode: str) -> float:
         """Calculate learning rate alpha with 0 <= alpha <= 1.
